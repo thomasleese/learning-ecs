@@ -18,3 +18,15 @@ Make sure your AWS credentials are exported for all the subsequent commands:
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
 ```
+
+### Plan
+
+```sh
+terraform plan
+```
+
+### Apply
+
+```sh
+terraform apply
+```
