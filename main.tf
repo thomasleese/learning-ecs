@@ -13,14 +13,17 @@ provider "aws" {
   region = "eu-west-2"
 }
 
+# Elastic Container Repository for storing the images
 resource "aws_ecr_repository" "main" {
   name = "learning-ecs"
 }
 
+# Elastic Container Service for running the containers
 resource "aws_ecs_cluster" "main" {
   name = "learning-ecs"
 }
 
+# ECS Task Execution Policy for allowing ECS to run tasks
 data "aws_iam_policy_document" "assume_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -42,6 +45,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# ECS task definition for the app
 resource "aws_ecs_task_definition" "main" {
   family                   = "${aws_ecs_cluster.main.name}-task"
   container_definitions    = jsonencode([
@@ -66,6 +70,7 @@ resource "aws_ecs_task_definition" "main" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
+# References to default AWS subnets and VPC
 resource "aws_default_vpc" "default" { }
 
 resource "aws_default_subnet" "default_a" {
@@ -80,6 +85,7 @@ resource "aws_default_subnet" "default_c" {
   availability_zone = "eu-west-2c"
 }
 
+# Create security groups for the load balancer and service.
 resource "aws_security_group" "load_balancer_security_group" {
   ingress {
     from_port   = 80
@@ -112,6 +118,7 @@ resource "aws_security_group" "service_security_group" {
   }
 }
 
+# Define the ECS service which runs the tasks
 resource "aws_ecs_service" "main" {
   name            = "${aws_ecs_cluster.main.name}-service"
   cluster         = aws_ecs_cluster.main.id
@@ -136,6 +143,7 @@ resource "aws_ecs_service" "main" {
   }
 }
 
+# Add a load balancer for connecting to the various EC2 instances
 resource "aws_alb" "main" {
   name               = "${aws_ecs_cluster.main.name}-lb"
   load_balancer_type = "application"
