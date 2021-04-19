@@ -13,6 +13,10 @@ provider "aws" {
   region = "eu-west-2"
 }
 
+resource "aws_ecr_repository" "main" {
+  name = "learning-ecs"
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "learning-ecs"
 }
