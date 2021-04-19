@@ -65,3 +65,34 @@ resource "aws_ecs_task_definition" "main" {
   cpu                      = 256
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
+
+resource "aws_default_vpc" "default" { }
+
+resource "aws_default_subnet" "default_a" {
+  availability_zone = "eu-west-2a"
+}
+
+resource "aws_default_subnet" "default_b" {
+  availability_zone = "eu-west-2b"
+}
+
+resource "aws_default_subnet" "default_c" {
+  availability_zone = "eu-west-2c"
+}
+
+resource "aws_ecs_service" "main" {
+  name            = "${aws_ecs_cluster.main.name}-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.main.arn
+  launch_type     = "FARGATE"
+  desired_count   = 2
+
+  network_configuration {
+    subnets          = [
+      aws_default_subnet.default_a.id,
+      aws_default_subnet.default_b.id,
+      aws_default_subnet.default_c.id
+    ]
+    assign_public_ip = true
+  }
+}
