@@ -43,7 +43,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 }
 
 resource "aws_ecs_task_definition" "main" {
-  family                   = aws_ecs_cluster.main.name
+  family                   = "${aws_ecs_cluster.main.name}-task"
   container_definitions    = jsonencode([
     {
       name = "${aws_ecs_cluster.main.name}-task"
@@ -80,6 +80,38 @@ resource "aws_default_subnet" "default_c" {
   availability_zone = "eu-west-2c"
 }
 
+resource "aws_security_group" "load_balancer_security_group" {
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "service_security_group" {
+  ingress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    security_groups = [aws_security_group.load_balancer_security_group.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_ecs_service" "main" {
   name            = "${aws_ecs_cluster.main.name}-service"
   cluster         = aws_ecs_cluster.main.id
@@ -94,5 +126,47 @@ resource "aws_ecs_service" "main" {
       aws_default_subnet.default_c.id
     ]
     assign_public_ip = true
+    security_groups  = [aws_security_group.service_security_group.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.main.arn
+    container_name   = aws_ecs_task_definition.main.family
+    container_port   = 4567
+  }
+}
+
+resource "aws_alb" "main" {
+  name               = "${aws_ecs_cluster.main.name}-lb"
+  load_balancer_type = "application"
+  subnets            = [
+    aws_default_subnet.default_a.id,
+    aws_default_subnet.default_b.id,
+    aws_default_subnet.default_c.id,
+  ]
+  security_groups    = [aws_security_group.load_balancer_security_group.id]
+}
+
+resource "aws_lb_target_group" "main" {
+  name        = "${aws_ecs_cluster.main.name}-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_default_vpc.default.id
+
+  health_check {
+    matcher = "200,301,302"
+    path = "/"
+  }
+}
+
+resource "aws_lb_listener" "main" {
+  load_balancer_arn = aws_alb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
   }
 }
