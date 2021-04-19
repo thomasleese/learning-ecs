@@ -30,3 +30,8 @@ terraform plan
 ```sh
 terraform apply
 ```
+
+### Upload image to ECR
+
+The image for the `service` will need to be built and upload to your ECR that was
+created in the previous step.
